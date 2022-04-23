@@ -1,20 +1,20 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors
+import matplotlib.colors as mcolors
 import time
 
 class Person:
     """
     An abstraction of a person who holds an opinion.
     """
-    def __init__(self, opinion: bool):
+    def __init__(self, opinion: float):
         self.opinion = opinion
 
-    def get_opinion(self) -> bool:
+    def get_opinion(self) -> float:
         return self.opinion
 
-    def set_opinion(self, opinion: bool):
+    def set_opinion(self, opinion: float):
         self.opinion = opinion
 
     def __repr__(self):
@@ -30,8 +30,9 @@ class VoterModel:
         self.n = n      # rows
         self.m = m      # cols
         self.matrix = [[Person(False) for _ in range(m)] for _ in range(n)]
+        self.im = None
 
-    def set_opinion(self, coords: (int, int), opinion: bool):
+    def set_opinion(self, coords: (int, int), opinion: float):
         """
         Given a coordinate and opinion, sets the person's opinion who is at that coordinate to the
         given opinion.
@@ -65,20 +66,54 @@ class VoterModel:
         nearest_neighbors = self._nearest_neighbors(coords)
         num_neighbors = len(nearest_neighbors)
         num_true = sum(neighbor.get_opinion() for neighbor in nearest_neighbors)
-        Pconvert = (num_true / num_neighbors)
-        if random.random() < Pconvert:
-            self.matrix[i][j].set_opinion(True)
-        else:
-            self.matrix[i][j].set_opinion(False)
+        Pconvert = 0.1*((num_true / num_neighbors) - 0.5)
+        opinion = self.matrix[i][j].get_opinion()
+        if (opinion > 1 or opinion < 0) and (abs(opinion+Pconvert) - abs(opinion)) > opinion:
+            Pconvert = 0
+        self.matrix[i][j].set_opinion(opinion + Pconvert)
 
     def _display_opinion_matrix(self):
         """
         Displays the voter model. Red cells indicate False opinions, Blue cells indicate True opinions.
         """
-        opinion_matrix = np.array( [[self.matrix[i][j].get_opinion() for j in range(self.m)] for i in range(self.n)] )
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["red", "blue"])
-        plt.imshow(opinion_matrix, interpolation='none', cmap=cmap)
+        opinion_matrix = np.array([[self.matrix[i][j].get_opinion() for j in range(self.m)] for i in range(self.n)])
+
+        if self.im == None:
+            cim = plt.imread("rb_gradient.png")
+            cim = cim[cim.shape[0] // 2, 8:740, :]
+            cmap = mcolors.ListedColormap(cim)
+            self.im = plt.imshow(opinion_matrix, cmap=cmap)
+
+        self.im.set_data(opinion_matrix)
         plt.pause(0.05)
+
+        # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["red", "blue"])
+        # plt.imshow(opinion_matrix, interpolation='none', cmap=cmap)
+        #
+        # colors = [(.8, .8, 1), (1, .8, .8)]  # first color is black, last is red
+        # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("Custom", colors, N=20)
+        # norm = plt.Normalize(opinion_matrix.min(), opinion_matrix.max())
+        # rgba = cmap(norm(opinion_matrix))
+        #
+        # for i in range(self.n):
+        #     for j in range(self.m):
+        #         if opinion_matrix[i][j] < 0.5:
+        #             # Blue
+        #             blue = .25 + opinion_matrix[i][j]
+        #             red = 0
+        #             green = 0
+        #         else:
+        #             # Red
+        #             red = 1.5 - opinion_matrix[i][j]
+        #             green = 0
+        #             blue = 0
+        #
+        #         rgba[i, j, :3] = red, green, blue
+        #
+        # plt.imshow(rgba, cmap=cmap)
+        #plt.show()
+        #plt.pause(0.01)
+
 
     def _is_over(self):
         """
@@ -126,15 +161,28 @@ class VoterModel:
 
 
 if __name__ == '__main__':
-    while True:
-        model = VoterModel(50, 50)
-        model.set_opinion((3, 3), True)
-        model.set_opinion((3, 2), True)
-        model.set_opinion((3, 4), True)
-        model.set_opinion((2, 3), True)
-        model.set_opinion((3, 3), True)
-        model.set_opinion((4, 3), True)
-        model.set_opinion((8, 3), True)
+    n = 1000
+    m = 1000
+    model = VoterModel(n, m)
 
-        model.timeskip(50)
-        time.sleep(3)
+    mu, sigma = 0.5, 0.1
+    s = np.random.normal(mu, sigma, size=(n, m))
+    for i in range(n):
+        for j in range(m):
+            opinion = s[i][j]
+            model.set_opinion((i, j), opinion)
+
+    for row in model.matrix:
+        print(row)
+
+
+    #model.set_opinion((0, 0), 0)
+    #model.set_opinion((n-1, m-1), 1)
+    # model.set_opinion((3, 4), True)
+    # model.set_opinion((2, 3), True)
+    # model.set_opinion((3, 3), True)
+    # model.set_opinion((4, 3), True)
+    # model.set_opinion((8, 3), True)
+
+    model.timeskip(1000)
+    plt.show()
