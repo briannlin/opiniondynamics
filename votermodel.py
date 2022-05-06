@@ -10,12 +10,19 @@ class Person:
     """
     def __init__(self, opinion: float):
         self.opinion = opinion
+        self.affected_by = []
 
     def get_opinion(self) -> float:
         return self.opinion
 
     def set_opinion(self, opinion: float):
         self.opinion = opinion
+
+    def get_affected_by(self):
+        return self.affected_by
+
+    def add_affected_by(self, coords: (int, int)):
+        self.affected_by.append(coords)
 
     def __repr__(self):
         return f'Person({self.opinion})'
@@ -44,7 +51,7 @@ class VoterModel:
     def _nearest_neighbors(self, coords: (int, int)) -> [(int, int)]:
         """
         Given a coordinate, returns a list of coordinates representing its nearest neighbors.
-        CHANGE - HOW MANY NEIGHBORS TO CONSIDER
+        CHANGE - HOW MANY NEIGHBORS TO CONSIDER (SCOPE OF INFLUENCE)
         """
         nearest_neighbors = []
         i, j = coords[0], coords[1]
@@ -61,14 +68,16 @@ class VoterModel:
         Given a coordinate, updates the opinion of the person at that coordinate probabilistically
         based on the opinions of its nearest neighbors.
         CHANGE: LOGIC - HOW PEOPLE GET AFFECTED
+        CHANGE: Travel: stochastically sample two people
+        CHANGE: scope of influence
         """
         i, j = coords
-        nearest_neighbors = self._nearest_neighbors(coords)
-        num_neighbors = len(nearest_neighbors)
-        num_true = sum(neighbor.get_opinion() for neighbor in nearest_neighbors)
+        affecting_neighbors = self.matrix[i][j].get_affected_by()
+        num_neighbors = len(affecting_neighbors)
+        num_true = sum(self.matrix[affector[0]][affector[1]].get_opinion() for affector in affecting_neighbors)
         Pconvert = 0.1*((num_true / num_neighbors) - 0.5)
         opinion = self.matrix[i][j].get_opinion()
-        if (opinion > 1 or opinion < 0) and (abs(opinion+Pconvert) - abs(opinion)) > opinion:
+        if (opinion > 1 or opinion < 0) and (abs(opinion+Pconvert) - abs(opinion)) > 0:
             Pconvert = 0
         self.matrix[i][j].set_opinion(opinion + Pconvert)
 
@@ -85,7 +94,7 @@ class VoterModel:
             self.im = plt.imshow(opinion_matrix, cmap=cmap)
 
         self.im.set_data(opinion_matrix)
-        plt.pause(0.05)
+        plt.pause(0.1)
 
         # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["red", "blue"])
         # plt.imshow(opinion_matrix, interpolation='none', cmap=cmap)
@@ -161,16 +170,38 @@ class VoterModel:
 
 
 if __name__ == '__main__':
-    n = 1000
-    m = 1000
+    n = 200
+    m = 200
     model = VoterModel(n, m)
 
+    # Initialize opinions to be random
     mu, sigma = 0.5, 0.1
     s = np.random.normal(mu, sigma, size=(n, m))
     for i in range(n):
         for j in range(m):
             opinion = s[i][j]
             model.set_opinion((i, j), opinion)
+
+    # Loop through all cells, getting random # btwn 0 & 1 to determine range of influence for each cell
+    for i in range(n):
+        for j in range(m):
+            pr = random.random()
+            if 0 <= pr <= 0.0025:
+                roi = ((((((((min(n, m) // 10))))))))
+            elif 0.02 < pr <= 0.6:
+                roi = 1
+            elif 0.6 < pr <= 0.85:
+                roi = 2
+            else:
+                roi = 3
+
+            # Cell (k, l), a cell in ROI of cell (i, j), is affected by cell (i, j)
+            for k in range(i - roi, i + roi + 1):
+                for l in range(j - roi, j + roi + 1):
+                    if k >= 0 and l >= 0 and k < n and l < m and (k != i or l != j):
+                        person = model.matrix[k][l]
+                        person.add_affected_by((i, j))
+
 
     for row in model.matrix:
         print(row)
