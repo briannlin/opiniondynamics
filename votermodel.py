@@ -81,6 +81,21 @@ class VoterModel:
             Pconvert = 0
         self.matrix[i][j].set_opinion(opinion + Pconvert)
 
+    def event(self, event_type):
+        if event_type > .9:
+            affectedness = .75
+        elif event_type > .8:
+            affectedness = .5
+        elif event_type > .7:
+            affectedness = .25
+
+
+        for i in range(0, n):
+            for j in range(0, n):
+                cur_opinion = self.matrix[i][j].get_opinion()
+                if (abs(cur_opinion - 0.5) > 0.25):
+                    self.matrix[i][j].set_opinion(cur_opinion + 0.75 * (affectedness - cur_opinion))
+
     def _display_opinion_matrix(self):
         """
         Displays the voter model. Red cells indicate False opinions, Blue cells indicate True opinions.
@@ -95,33 +110,6 @@ class VoterModel:
 
         self.im.set_data(opinion_matrix)
         plt.pause(0.1)
-
-        # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["red", "blue"])
-        # plt.imshow(opinion_matrix, interpolation='none', cmap=cmap)
-        #
-        # colors = [(.8, .8, 1), (1, .8, .8)]  # first color is black, last is red
-        # cmap = matplotlib.colors.LinearSegmentedColormap.from_list("Custom", colors, N=20)
-        # norm = plt.Normalize(opinion_matrix.min(), opinion_matrix.max())
-        # rgba = cmap(norm(opinion_matrix))
-        #
-        # for i in range(self.n):
-        #     for j in range(self.m):
-        #         if opinion_matrix[i][j] < 0.5:
-        #             # Blue
-        #             blue = .25 + opinion_matrix[i][j]
-        #             red = 0
-        #             green = 0
-        #         else:
-        #             # Red
-        #             red = 1.5 - opinion_matrix[i][j]
-        #             green = 0
-        #             blue = 0
-        #
-        #         rgba[i, j, :3] = red, green, blue
-        #
-        # plt.imshow(rgba, cmap=cmap)
-        #plt.show()
-        #plt.pause(0.01)
 
 
     def _is_over(self):
@@ -145,14 +133,18 @@ class VoterModel:
         Perform one timeskip in the model, which randomly samples all the cells in the model and
         applies the probabilistic nearest-neighbour updating on each cell.
         """
-        coords = []
-        for i in range(self.n):
-            for j in range(self.m):
-                coords.append((i, j))
+        event_type = random.random()
+        if event_type > .7:
+            self.event(event_type)
+        else:
+            coords = []
+            for i in range(self.n):
+                for j in range(self.m):
+                    coords.append((i, j))
 
-        random.shuffle(coords)
-        for coord in coords:
-            self.update_opinion(coord)
+            random.shuffle(coords)
+            for coord in coords:
+                self.update_opinion(coord)
 
     def timeskip(self, t: int):
         """
@@ -161,6 +153,7 @@ class VoterModel:
         plt.title("Time = 0")
         self._display_opinion_matrix()
         for i in range(t):
+
             self._oneskip()
             plt.title(f"Time = {i+1}")
             self._display_opinion_matrix()
@@ -187,8 +180,8 @@ if __name__ == '__main__':
         for j in range(m):
             pr = random.random()
             if 0 <= pr <= 0.0025:
-                roi = ((((((((min(n, m) // 10))))))))
-            elif 0.02 < pr <= 0.6:
+                roi = (min(n, m) // 10)
+            elif 0.0025 < pr <= 0.6:
                 roi = 1
             elif 0.6 < pr <= 0.85:
                 roi = 2
