@@ -10,19 +10,12 @@ class Person:
     """
     def __init__(self, opinion: float):
         self.opinion = opinion
-        self.affected_by = []
 
     def get_opinion(self) -> float:
         return self.opinion
 
     def set_opinion(self, opinion: float):
         self.opinion = opinion
-
-    def get_affected_by(self):
-        return self.affected_by
-
-    def add_affected_by(self, coords: (int, int)):
-        self.affected_by.append(coords)
 
     def __repr__(self):
         return f'Person({self.opinion})'
@@ -51,7 +44,7 @@ class VoterModel:
     def _nearest_neighbors(self, coords: (int, int)) -> [(int, int)]:
         """
         Given a coordinate, returns a list of coordinates representing its nearest neighbors.
-        CHANGE - HOW MANY NEIGHBORS TO CONSIDER (SCOPE OF INFLUENCE)
+        CHANGE - HOW MANY NEIGHBORS TO CONSIDER
         """
         nearest_neighbors = []
         i, j = coords[0], coords[1]
@@ -68,33 +61,24 @@ class VoterModel:
         Given a coordinate, updates the opinion of the person at that coordinate probabilistically
         based on the opinions of its nearest neighbors.
         CHANGE: LOGIC - HOW PEOPLE GET AFFECTED
-        CHANGE: Travel: stochastically sample two people
-        CHANGE: scope of influence
         """
         i, j = coords
-        affecting_neighbors = self.matrix[i][j].get_affected_by()
-        num_neighbors = len(affecting_neighbors)
-        num_true = sum(self.matrix[affector[0]][affector[1]].get_opinion() for affector in affecting_neighbors)
-        Pconvert = 0.1*((num_true / num_neighbors) - 0.5)
-        opinion = self.matrix[i][j].get_opinion()
-        if (opinion > 1 or opinion < 0) and (abs(opinion+Pconvert) - abs(opinion)) > 0:
-            Pconvert = 0
-        self.matrix[i][j].set_opinion(opinion + Pconvert)
+        opn = 0
 
-    def event(self, event_type):
-        if event_type > .9:
-            affectedness = .75
-        elif event_type > .8:
-            affectedness = .5
-        elif event_type > .7:
-            affectedness = .25
+        __i = 0
+        count = 3
+        range = 2
+        start_i = random.randint(0, self.m)
+        start_j = random.randint(0, self.n)
+        while __i != count:
+            _i = random.randint(start_i - range, start_i + range)
+            _j = random.randint(start_j - range, start_j + range)
+            if _i < self.m and _j < self.n:
+                opn += self.matrix[_i][_j].get_opinion()
+                __i += 1
 
 
-        for i in range(0, n):
-            for j in range(0, n):
-                cur_opinion = self.matrix[i][j].get_opinion()
-                if (abs(cur_opinion - 0.5) > 0.25):
-                    self.matrix[i][j].set_opinion(cur_opinion + 0.75 * (affectedness - cur_opinion))
+        self.matrix[i][j].set_opinion(opn/count)
 
     def _display_opinion_matrix(self):
         """
@@ -109,7 +93,7 @@ class VoterModel:
             self.im = plt.imshow(opinion_matrix, cmap=cmap)
 
         self.im.set_data(opinion_matrix)
-        plt.pause(0.1)
+        plt.pause(0.05)
 
 
     def _is_over(self):
@@ -133,25 +117,14 @@ class VoterModel:
         Perform one timeskip in the model, which randomly samples all the cells in the model and
         applies the probabilistic nearest-neighbour updating on each cell.
         """
-        event_type = random.random()
-        if event_type > .7:
-            # Update based on "wave of influence" event
-            #self.event(event_type)
-            pass
-        else:
-            # Update based on neighbors
-            coords = []
-            for i in range(self.n):
-                for j in range(self.m):
-                    coords.append((i, j))
+        coords = []
+        for i in range(self.n):
+            for j in range(self.m):
+                coords.append((i, j))
 
-            random.shuffle(coords)
-            for coord in coords:
-                i, j = coord
-                if random.random() < .075:
-                    self.matrix[i][j].set_opinion(0.5)
-                else:
-                    self.update_opinion(coord)
+        random.shuffle(coords)
+        for coord in coords:
+            self.update_opinion(coord)
 
     def timeskip(self, t: int):
         """
@@ -160,7 +133,6 @@ class VoterModel:
         plt.title("Time = 0")
         self._display_opinion_matrix()
         for i in range(t):
-
             self._oneskip()
             plt.title(f"Time = {i+1}")
             self._display_opinion_matrix()
@@ -170,38 +142,17 @@ class VoterModel:
 
 
 if __name__ == '__main__':
-    n = 200
-    m = 200
+    n = 100
+    m = 100
     model = VoterModel(n, m)
 
-    # Initialize opinions to be random
-    mu, sigma = 0.5, 0.1
-    s = np.random.normal(mu, sigma, size=(n, m))
+    #mu, sigma = 0.5, 0.1
+    #s = np.random.normal(mu, sigma, size=(n, m))
     for i in range(n):
         for j in range(m):
-            opinion = s[i][j]
+            #opinion = s[i][j]
+            opinion = random.randint(0, 1)
             model.set_opinion((i, j), opinion)
-
-    # Loop through all cells, getting random # btwn 0 & 1 to determine range of influence for each cell
-    for i in range(n):
-        for j in range(m):
-            pr = random.random()
-            if 0 <= pr <= 0.0025:
-                roi = (min(n, m) // 10)
-            elif 0.0025 < pr <= 0.6:
-                roi = 1
-            elif 0.6 < pr <= 0.85:
-                roi = 2
-            else:
-                roi = 3
-
-            # Cell (k, l), a cell in ROI of cell (i, j), is affected by cell (i, j)
-            for k in range(i - roi, i + roi + 1):
-                for l in range(j - roi, j + roi + 1):
-                    if k >= 0 and l >= 0 and k < n and l < m and (k != i or l != j):
-                        person = model.matrix[k][l]
-                        person.add_affected_by((i, j))
-
 
     for row in model.matrix:
         print(row)
